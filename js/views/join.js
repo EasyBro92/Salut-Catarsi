@@ -41,7 +41,7 @@ export default function view({ el, params, query }) {
       sess = await findSessionByCode(code);
       if (!sess) { err = t('join.notfound'); state = 'code'; return renderCode(); }
       const ex = await db.get(`sessions/${sess.id}/players/${auth.current.uid}`);
-      if (ex) { go('/game/' + sess.id); return; }
+      if (ex) { go((sess.mode === 'blind' ? '/bgame/' : '/game/') + sess.id); return; }
       unTeams = db.onList(`sessions/${sess.id}/teams`, {}, (l) => { teams = l; if (state === 'form') { const f = el.querySelector('#joinForm'); const keep = f ? formData(f) : null; renderForm(); const nf = el.querySelector('#joinForm'); if (nf && keep) { for (const k of ['nick', 'team', 'newTeam', 'table']) if (nf.elements[k] && keep[k] != null) nf.elements[k].value = keep[k]; nf.elements.team && nf.elements.team.dispatchEvent(new Event('change', { bubbles: true })); } } });
       state = 'form'; renderForm();
     } catch (e) { console.error(e); err = t('err.generic'); state = 'code'; renderCode(); }
@@ -63,7 +63,7 @@ export default function view({ el, params, query }) {
         if (loggedIn() && !S.profile?.adult && f.adult) await db.update(`users/${uid}`, { adult: true });
         try { localStorage.setItem('catas_guest_nick', f.nick); } catch { /* nada */ }
         await joinSession(sess.id, uid, { nick: f.nick, teamId, registered: loggedIn(), adult: true, lang: S.lang });
-        go('/game/' + sess.id);
+        go((sess.mode === 'blind' ? '/bgame/' : '/game/') + sess.id);
       } catch (ex) { console.error(ex); err = ex.message === 'table' ? t('join.badTable') : ex.message === 'team' ? t('join.teamName') : t('err.generic'); busy = false; renderForm(); }
     }),
   ];

@@ -7,22 +7,28 @@ import { adminTabs } from './ui.js';
 import { startQuestion, revealQuestion, nextOrEnd, endSession, addTeam, standings, teamStandings, fastestLabel } from '../../game.js';
 import { ring, updateRing, mediaBlock, optionsView, lbList, podium, LETTERS } from '../../ui-game.js';
 import { qrSvg } from '../../vendor/qr.js';
+import { startBlindWine, revealBlind, nextOrEndBlind, withChips } from '../../blind.js';
+import { solutionList } from '../../ui-blind.js';
 
 export default function view({ el, params }) {
   const sid = params.sid, sp = `sessions/${sid}`;
-  let s = null, players = [], teams = [], answers = [], qCur = null, qNext = null, ratings = [];
-  let timer = null, startLocal = 0, lastIdx = -2, revealing = false, autoAll = true, acTimer = null, subAns = () => {}, subQ = () => {}, subNext = () => {}, lastSig = '', lastStatus = '', busy = false;
+  let s = null, players = [], teams = [], answers = [], bets = [], qCur = null, qNext = null, ratings = [];
+  let timer = null, startLocal = 0, lastIdx = -2, revealing = false, autoAll = true, acTimer = null, subAns = () => {}, subBets = () => {}, subQ = () => {}, subNext = () => {}, lastSig = '', lastStatus = '', busy = false;
 
   const joinUrl = (extra = '') => `${location.origin}${location.pathname}#/join/${s.code}${extra}`;
   const screenUrl = () => `${location.origin}${location.pathname}#/screen/${s.code}`;
+  const blind = () => s?.mode === 'blind';                      // Cata a cegues: mismo salón y mismos equipos, pero se apuesta fichas en vez de contestar
+  const nAns = () => (blind() ? bets.filter((b) => b.done).length : answers.length);
+  const P = () => (blind() ? withChips(players, s) : players);  // en la Cata a cegues el marcador son las fichas
+  const total = () => (blind() ? s.nWines : s.total);
   const remaining = () => (s?.cur ? Math.max(0, s.cur.durationSec - (Date.now() - startLocal) / 1000) : 0);
 
   function sig() {
-    return JSON.stringify([{ ...s, answeredCount: 0 }, players.map((p) => [p.id, p.nick, p.score, p.teamId, p.lastOk].join(':')), teams.map((x) => x.id + x.name + x.code), qCur?.correct, qNext?.prompt, ratings.length, busy]);
+    return JSON.stringify([{ ...s, answeredCount: 0 }, players.map((p) => [p.id, p.nick, p.score, p.teamId, p.lastOk].join(':')), teams.map((x) => x.id + x.name + x.code), qCur?.correct, qNext?.prompt ?? qNext?.label, ratings.length, busy, bets.filter((b) => b.done).length, bets.length]);
   }
   function render(force = false) {
     if (!s) return;
-    const ac = el.querySelector('[data-answered]'); if (ac) ac.textContent = t('game.answered', { a: answers.length, n: players.length });
+    const ac = el.querySelector('[data-answered]'); if (ac) ac.textContent = t(blind() ? 'blind.answered' : 'game.answered', { a: nAns(), n: players.length });
     const sg = sig(); if (!force && sg === lastSig) return; lastSig = sg;
     let body = '';
     if (s.status === 'lobby') body = lobby();
@@ -43,7 +49,7 @@ export default function view({ el, params }) {
     const canTeams = s.teamMode !== 'off';
     return html`<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start">
       <div class="card center"><p class="muted">${t('a.run.joinHint')}</p><div class="code">${s.code}</div><div class="qr mt">${raw(qrSvg(joinUrl(), { size: 220 }))}</div>
-        <p class="small muted mt">${t('a.g.modeShort.' + s.teamMode)} · ${t('a.run.nQ', { n: s.total })}</p>
+        <p class="small muted mt">${t('a.g.modeShort.' + s.teamMode)} · ${blind() ? t('blind.nWines', { n: s.nWines }) : t('a.run.nQ', { n: s.total })}</p>
         <button class="btn primary block mt" data-act="start" ${busy ? 'disabled' : ''}>▶ ${t('a.run.start')}</button></div>
       <div class="stack"><div class="card"><div class="row between"><h3 style="margin:0">👥 ${t('a.run.players', { n: players.length })}</h3></div>
           ${players.length ? html`<div class="mt">${[...players].sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0)).map((p) => html`<div class="row mb"><span class="grow">${p.nick} ${p.registered ? html`<span class="tag">${t('a.run.account')}</span>` : ''}</span>${canTeams ? html`<select data-team="${p.id}" style="max-width:150px"><option value="">${t('a.run.noTeam')}</option>${teams.map((x) => html`<option value="${x.id}" ${x.id === p.teamId ? 'selected' : ''}>${x.name}</option>`)}</select>` : ''}<button class="btn sm ghost" data-kick="${p.id}" title="${t('a.run.kick')}">✕</button></div>`)}</div>` : html`<p class="muted mt">${t('a.run.waiting')}</p>`}</div>
@@ -55,6 +61,7 @@ export default function view({ el, params }) {
   // ---------- pregunta en juego ----------
   const question = () => {
     const c = s.cur;
+    if (blind()) return blindQuestion();
     return html`<div class="row between mb"><span class="pill gold">${t('game.question', { i: c.index + 1, n: s.total })}</span><div class="row"><span class="pill" data-answered>${t('game.answered', { a: answers.length, n: players.length })}</span>${c.open ? ring(remaining(), c.durationSec) : ''}</div></div>
       <div class="card qbox">${c.ref ? html`<span class="pill cat">${c.ref}</span>` : ''}<h2>${c.prompt}</h2>${mediaBlock(c)}</div>
       <div class="opts two">${c.options.map((o, i) => html`<div class="opt c${i % 4}"><span class="ltr">${LETTERS[i]}</span><span>${o}</span>${qCur && qCur.correct === i ? html`<span class="cnt">✓ ${t('a.q.correct').toLowerCase()}</span>` : ''}</div>`)}</div>
@@ -63,6 +70,7 @@ export default function view({ el, params }) {
 
   // ---------- resultado de la pregunta ----------
   const reveal = () => {
+    if (blind()) return blindReveal();
     const c = s.cur, r = s.reveal || {}, last = s.qIndex + 1 >= s.total;
     const rank = standings(players), ts = teamStandings(players, teams).filter((x) => x.members > 0);
     return html`<div class="card qbox"><h3>${c.prompt}</h3></div>
@@ -72,30 +80,47 @@ export default function view({ el, params }) {
       <div class="sticky-actions">${!last && qNext ? html`<p class="small muted center">${t('a.run.next')}: ${qNext.ref ? qNext.ref + ' · ' : ''}${qNext.prompt}</p>` : ''}<button class="btn primary block" data-act="next" ${busy ? 'disabled' : ''}>${last ? '🏆 ' + t('a.run.endShow') : t('a.run.nextQ') + ' ▶'}</button></div>`;
   };
 
+  // ---------- Cata a cegues: vino abierto y resultado ----------
+  const blindQuestion = () => {
+    const c = s.cur;
+    return html`<div class="row between mb"><span class="pill gold">${t('blind.wine', { i: c.index + 1, n: s.nWines })}</span><span class="pill" data-answered>${t('blind.answered', { a: nAns(), n: players.length })}</span></div>
+      <div class="card qbox center"><h2 style="margin:0">${c.label}</h2><p class="muted small" style="margin:.4rem 0 0">${t('a.blind.open')}</p></div>
+      ${qCur?.sol ? html`<details class="card mt"><summary>${t('a.blind.seeSol')}</summary>${solutionList({ sol: qCur.sol })}</details>` : ''}
+      <div class="row between wrap mt"><label class="check" style="margin:0"><input type="checkbox" id="autoAll" ${autoAll ? 'checked' : ''}><span>${t('a.blind.autoAll')}</span></label><button class="btn gold" data-act="reveal">${t('a.blind.reveal')}</button></div>`;
+  };
+  const blindReveal = () => {
+    const c = s.cur, r = s.reveal || {}, last = s.qIndex + 1 >= s.nWines;
+    const rank = standings(P()), ts = teamStandings(P(), teams).filter((x) => x.members > 0);
+    return html`<div class="card qbox center"><h2 style="margin:0">${r.label || c.label}</h2></div>
+      ${solutionList(r)}${r.avgStars ? html`<p class="muted mt">⭐ ${t('blind.avgStars', { n: r.avgStars })}</p>` : ''}
+      <div class="grid mt" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start"><div><h3>${t('game.ranking')}</h3>${lbList(rank, '', { limit: 8 })}</div>${ts.length > 1 ? html`<div><h3>${t('game.teams')}</h3>${lbList(ts.map((x) => ({ ...x, nick: x.name })), '', { colorOf: (x) => x.color })}</div>` : ''}</div>
+      <div class="sticky-actions">${!last && qNext ? html`<p class="small muted center">${t('a.run.next')}: ${qNext.label}</p>` : ''}<button class="btn primary block" data-act="next" ${busy ? 'disabled' : ''}>${last ? '🏆 ' + t('a.run.endShow') : t('a.blind.nextWine') + ' ▶'}</button></div>`;
+  };
+
   // ---------- final ----------
   const ended = () => {
-    const rank = standings(players), ts = teamStandings(players, teams).filter((x) => x.members > 0);
+    const rank = standings(P()), ts = teamStandings(P(), teams).filter((x) => x.members > 0);
     const avg = ratings.length ? (ratings.reduce((a, r) => a + r.stars, 0) / ratings.length).toFixed(1) : null;
-    return html`<div class="center"><h2>🏆 ${t('a.run.ended')}</h2></div>${podium(rank)}
+    return html`<div class="center"><h2>🏆 ${t('a.run.ended')}</h2></div>${podium(rank, blind() ? t('blind.chips') : 'pts')}
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start"><div><h3>${t('a.run.finalRank')}</h3>${lbList(rank, '', { limit: 15 })}</div>${ts.length > 1 ? html`<div><h3>${t('game.teams')}</h3>${lbList(ts.map((x) => ({ ...x, nick: x.name })), '', { colorOf: (x) => x.color })}</div>` : ''}</div>
       <div class="card mt"><p class="muted" style="margin:0">✅ ${t('a.run.endedNote', { a: players.filter((p) => p.registered).length, n: players.length })}${avg ? ' ' + t('a.run.avg', { avg, n: ratings.length }) : ''}</p></div>`;
   };
 
   // ---------- reloj de la pregunta ----------
   async function tick() {
-    if (!s || s.status !== 'question' || !s.cur?.open) return;
+    if (!s || s.status !== 'question' || !s.cur?.open || blind()) return;   // la Cata a cegues no tiene cuenta atrás: revela el presentador
     const left = remaining();
     updateRing(el, left, s.cur.durationSec);
     if ((Date.now() - startLocal) / 1000 >= s.cur.durationSec + 0.8 && !revealing) doReveal();
   }
   async function doReveal() {
     if (revealing) return; revealing = true;
-    try { await revealQuestion(sid); } catch (e) { console.error(e); toast(t('a.run.revealErr'), 'err'); }
+    try { await (blind() ? revealBlind(sid) : revealQuestion(sid)); } catch (e) { console.error(e); toast(t('a.run.revealErr'), 'err'); }
     revealing = false;
   }
   function syncAnswered() {
     if (!s || s.status !== 'question') return;
-    const n = answers.length;
+    const n = nAns();
     if ((s.answeredCount || 0) !== n) { clearTimeout(acTimer); acTimer = setTimeout(() => db.update(sp, { answeredCount: n }).catch(() => {}), 250); }
     if (autoAll && players.length && n >= players.length && !revealing) setTimeout(() => { if (s?.status === 'question') doReveal(); }, 700);
   }
@@ -106,9 +131,11 @@ export default function view({ el, params }) {
     if (s.status === 'question' && s.cur?.index !== lastIdx) {
       lastIdx = s.cur.index; revealing = false;
       const d2 = Math.abs(Date.now() - s.cur.openedAt); startLocal = d2 < 4000 ? s.cur.openedAt : Date.now();
-      subAns(); subAns = db.onList(`${sp}/answers`, { where: [['index', '==', lastIdx]] }, (l) => { answers = l; syncAnswered(); render(); });
+      subAns(); subBets(); answers = []; bets = [];
+      if (blind()) subBets = db.onList(`${sp}/bets`, { where: [['index', '==', lastIdx]] }, (l) => { bets = l; syncAnswered(); render(); });
+      else subAns = db.onList(`${sp}/answers`, { where: [['index', '==', lastIdx]] }, (l) => { answers = l; syncAnswered(); render(); });
       subQ(); subQ = db.onDoc(`${sp}/qs/${lastIdx}`, (q) => { qCur = q; render(); });
-      subNext(); qNext = null; if (lastIdx + 1 < s.total) subNext = db.onDoc(`${sp}/qs/${lastIdx + 1}`, (q) => { qNext = q; render(); });
+      subNext(); qNext = null; if (lastIdx + 1 < total()) subNext = db.onDoc(`${sp}/qs/${lastIdx + 1}`, (q) => { qNext = q; render(); });
     }
     if (s.status === 'ended' && !subs.ratings) subs.ratings = db.onList(`${sp}/ratings`, {}, (l) => { ratings = l; render(); });
     render();
@@ -126,9 +153,9 @@ export default function view({ el, params }) {
 
   const run = async (fn, errMsg = t('err.generic')) => { busy = true; render(true); try { await fn(); } catch (e) { console.error(e); toast(errMsg, 'err'); } busy = false; render(true); };
   const offs = [
-    on(el, 'click', '[data-act="start"]', () => run(() => startQuestion(sid, 0), t('a.run.startErr'))),
+    on(el, 'click', '[data-act="start"]', () => run(() => (blind() ? startBlindWine(sid, 0) : startQuestion(sid, 0)), t('a.run.startErr'))),
     on(el, 'click', '[data-act="reveal"]', () => doReveal()),
-    on(el, 'click', '[data-act="next"]', () => run(() => nextOrEnd(sid))),
+    on(el, 'click', '[data-act="next"]', () => run(() => (blind() ? nextOrEndBlind(sid) : nextOrEnd(sid)))),
     on(el, 'change', '#autoAll', (e, c) => { autoAll = c.checked; syncAnswered(); }),
     on(el, 'click', '[data-act="screen"]', () => window.open(screenUrl(), '_blank')),
     on(el, 'click', '[data-act="copy"]', async () => { try { await navigator.clipboard.writeText(joinUrl()); toast(t('a.run.copied')); } catch { prompt(t('a.run.copyPrompt'), joinUrl()); } }),
@@ -141,5 +168,5 @@ export default function view({ el, params }) {
     }),
   ];
   setHtml(el, html`<div class="empty">…</div>`);
-  return () => { clearInterval(timer); clearTimeout(acTimer); document.removeEventListener('visibilitychange', volverPantalla); try { wl?.release().catch(() => {}); } catch { /* nada */ } Object.values(subs).forEach((f) => f()); subAns(); subQ(); subNext(); offs.forEach((f) => f()); };
+  return () => { clearInterval(timer); clearTimeout(acTimer); document.removeEventListener('visibilitychange', volverPantalla); try { wl?.release().catch(() => {}); } catch { /* nada */ } Object.values(subs).forEach((f) => f()); subAns(); subBets(); subQ(); subNext(); offs.forEach((f) => f()); };
 }

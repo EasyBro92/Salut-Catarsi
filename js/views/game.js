@@ -106,6 +106,7 @@ export default function view({ el, params }) {
 
   function onSession(d) {
     const prev = s; s = d;
+    if (s?.mode === 'blind') { go('/bgame/' + sid); return; }   // por si se entra con un enlace de partida sin más
     if (!s) { setHtml(el, html`<div class="game"><div class="card center empty"><span class="big">🤷</span>${t('game.gone')}<div class="mt"><a class="btn" href="#/">${t('common.home')}</a></div></div></div>`); return; }
     const idx = s.status === 'question' ? s.cur?.index : -1;
     if (s.status === 'question' && idx !== lastIdx) {

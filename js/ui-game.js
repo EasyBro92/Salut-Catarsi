@@ -43,9 +43,9 @@ export function optionsView(cur, { picked = -1, correct = null, counts = null, i
 
 export const lbList = (items, meId = '', { limit = 99, colorOf } = {}) => html`<ol class="lb">${items.slice(0, limit).map((p, i) => html`<li class="${p.id === meId || p.uid === meId ? 'me' : ''}" style="animation-delay:${i * 60}ms"><span class="pos">${i + 1}</span><span class="nm">${colorOf && colorOf(p) ? html`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorOf(p)};margin-right:6px"></span>` : ''}${p.nick || p.name}</span><span class="sc">${p.score ?? p.points ?? 0}</span></li>`)}</ol>`;
 
-export function podium(top) {
+export function podium(top, unit = 'pts') {
   const [a, b, c] = [top[0], top[1], top[2]];
-  const step = (p, cls, n) => p ? html`<div class="step ${cls}">${n === 1 ? html`<div class="crown" aria-hidden="true">👑</div>` : ''}<div class="who">${p.nick || p.name}</div><div class="sc">${p.score ?? p.points} pts</div><div class="bar">${n}</div></div>` : html`<div class="step ${cls}"></div>`;
+  const step = (p, cls, n) => p ? html`<div class="step ${cls}">${n === 1 ? html`<div class="crown" aria-hidden="true">👑</div>` : ''}<div class="who">${p.nick || p.name}</div><div class="sc">${p.score ?? p.points} ${unit}</div><div class="bar">${n}</div></div>` : html`<div class="step ${cls}"></div>`;
   return html`<div class="podium">${step(b, 'p2', 2)}${step(a, 'p1', 1)}${step(c, 'p3', 3)}</div>`;
 }
 

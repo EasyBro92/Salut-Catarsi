@@ -4,8 +4,11 @@ import { t } from '../i18n.js';
 import { CONFIG } from '../config.js';
 import { html, setHtml, on, sfx, isMuted, setMuted, celebrate, raw } from '../util.js';
 import { standings, teamStandings, findSessionByCode, fastestLabel } from '../game.js';
+import { ATTRS, attrName } from '../blind.js';
 import { ring, updateRing, mediaBlock, optionsView, lbList, podium, floatEmoji, clearFloat } from '../ui-game.js';
 import { qrSvg } from '../vendor/qr.js';
+import { withChips } from '../blind.js';
+import { solutionList } from '../ui-blind.js';
 
 export default function view({ el, params }) {
   const code = params.code.toUpperCase();
@@ -18,12 +21,22 @@ export default function view({ el, params }) {
   function render(force = false) {
     if (!s) return;
     const sg = sig(); if (!force && sg === lastSig) return; lastSig = sg;
-    const rank = standings(players), ts = teamStandings(players, teams).filter((x) => x.members > 0 || x.kind === 'table');
+    const blind = s.mode === 'blind', P = blind ? withChips(players, s) : players;   // Cata a cegues: el marcador son las fichas
+    const rank = standings(P), ts = teamStandings(P, teams).filter((x) => x.members > 0 || x.kind === 'table');
     let body = '';
     if (s.status === 'lobby') {
       body = html`<div class="cols" style="margin-top:3vh"><div class="center"><p class="muted">${t('screen.join')}</p><div class="code">${s.code}</div><div class="qr" style="margin-top:2vh">${raw(qrSvg(joinUrl(), { size: Math.min(360, innerHeight * 0.4) }))}</div><p class="muted small" style="margin-top:1vh">${t('screen.orScan')}</p></div>
         <div><h2>👥 ${t('game.players', { n: players.length })}</h2><div class="players">${players.map((p) => html`<span class="pl">${p.nick}</span>`)}</div>
         ${ts.length ? html`<h3 class="mt2">${t('game.teams')}</h3><div class="players">${ts.map((x) => html`<span class="pl" style="border-color:${x.color}">${x.name} · ${x.members}${x.kind === 'table' && x.code ? ' · ' + x.code : ''}</span>`)}</div>` : ''}</div></div>`;
+    } else if (s.status === 'question' && blind) {
+      const c = s.cur;
+      body = html`<div class="row between"><span class="pill gold">${t('blind.wine', { i: c.index + 1, n: s.nWines })}</span><span class="pill">${t('blind.answered', { a: s.answeredCount || 0, n: players.length })}</span></div>
+        <div class="qtext">${c.label}</div><p class="center muted" style="font-size:1.4em">${t('blind.screenOpen')}</p>
+        <div class="bet-list big" style="max-width:760px;margin:2vh auto 0">${ATTRS.map((a) => html`<div class="rv-row"><span class="bet-ic">${a.icon}</span><div class="grow"><b>${attrName(a.id)}</b></div><span class="pill gold">×${a.mult}</span></div>`)}</div>`;
+    } else if (s.status === 'reveal' && blind) {
+      const c = s.cur, r = s.reveal || {};
+      body = html`<div class="cols"><div><div class="qtext" style="font-size:1.8em;text-align:left">${r.label || c.label}</div>${solutionList(r, { big: true })}</div>
+        <div><h2>${t('game.ranking')}</h2>${lbList(rank, '', { limit: 8 })}${ts.length > 1 ? html`<h3 class="mt">${t('game.teams')}</h3>${lbList(ts.map((x) => ({ ...x, nick: x.name })), '', { limit: 5, colorOf: (x) => x.color })}` : ''}</div></div>`;
     } else if (s.status === 'question') {
       const c = s.cur;
       body = html`<div class="row between"><span class="pill gold">${t('game.question', { i: c.index + 1, n: s.total })}</span><div class="row">${c.ref ? html`<span class="pill">${c.ref}</span>` : ''}<span class="pill">${t('game.answered', { a: s.answeredCount || 0, n: players.length })}</span>${ring(remaining(), c.durationSec)}</div></div>
@@ -33,7 +46,7 @@ export default function view({ el, params }) {
       body = html`<div class="cols"><div><div class="qtext" style="font-size:1.8em;text-align:left">${c.prompt}</div>${optionsView(c, { correct: r.correct, counts: r.counts, interactive: false })}${r.explanation ? html`<div class="card mt">💡 ${r.explanation}</div>` : ''}${r.fastest ? html`<p class="muted mt">⚡ ${t('game.fastest', { nick: r.fastest.nick, t: fastestLabel(r.fastest.ms) })}</p>` : ''}</div>
         <div><h2>${t('game.ranking')}</h2>${lbList(rank, '', { limit: 8 })}${ts.length > 1 ? html`<h3 class="mt">${t('game.teams')}</h3>${lbList(ts.map((x) => ({ ...x, nick: x.name })), '', { limit: 5, colorOf: (x) => x.color })}` : ''}</div></div>`;
     } else {
-      body = html`<div class="center"><h1 style="font-size:2.6em">${t('game.finished')} 🎉</h1></div>${podium(rank)}
+      body = html`<div class="center"><h1 style="font-size:2.6em">${t('game.finished')} 🎉</h1></div>${podium(rank, blind ? t('blind.chips') : 'pts')}
         <div class="cols"><div>${lbList(rank, '', { limit: 10 })}</div><div>${ts.length > 1 ? html`<h3>${t('game.teams')}</h3>${lbList(ts.map((x) => ({ ...x, nick: x.name })), '', { limit: 6, colorOf: (x) => x.color })}` : ''}</div></div>`;
     }
     setHtml(el, html`<div class="screen"><div class="row between mb"><div class="brand"><span class="logo">${CONFIG.brand.emoji}</span><span>${s.title}</span></div><div class="row"><span class="pill gold">${s.code}</span><button class="icon-btn" data-act="mute">${isMuted() ? '🔇' : '🔊'}</button></div></div>${body}</div>`);

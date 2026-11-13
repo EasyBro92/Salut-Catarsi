@@ -695,3 +695,29 @@ html.trg-on, html.trg-on body { overflow: hidden; overscroll-behavior: none; }
 @keyframes promoOut { to { opacity: 0; } }
 @keyframes promoCard { from { opacity: 0; transform: translateY(28px) scale(.94); } }
 @media (prefers-reduced-motion: reduce) { .promo-bg, .promo-bg.out, .promo { animation: none; } .promo-dots button::before { transition: none; } }
+
+/* ===== Cata a cegues: apostar fichas en cada rasgo del vino ===== */
+.bet-list { display: grid; gap: 10px; }
+.bet-row { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: grid; gap: 10px; grid-template-columns: 1fr auto; align-items: center; transition: border-color .15s, background .15s; }
+.bet-row.on { border-color: var(--wine); background: var(--wine-soft); }
+.bet-row .bet-h { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
+.bet-row .bet-h .pill { margin-left: auto; }
+.bet-row select { width: 100%; min-height: 44px; }
+.bet-ic { font-size: 1.4rem; line-height: 1; flex: none; }
+.stepper output { min-width: 62px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stepper button:disabled { opacity: .35; cursor: default; }
+.blind .sticky-actions { bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 10px 0 calc(8px + var(--safe-b)); margin-top: 14px; }
+.bet-row .stepper { gap: 4px; padding: 3px; } .bet-row .stepper button { width: 34px; height: 34px; } .bet-row .stepper output { min-width: 54px; }
+.bet-row select { min-width: 0; }
+.warn-txt { color: var(--amber); font-weight: 600; }
+.rv-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.rv-row.ok { border-color: #9bd1b8; background: var(--green-soft); }
+.rv-row.bad { border-color: #e7a9b3; background: var(--red-soft); }
+.rv-row.none { opacity: .75; }
+.rv-row.sealed { background: var(--surface); }
+.rv-net { font-weight: 800; font-size: 1.15rem; font-variant-numeric: tabular-nums; min-width: 3.2ch; text-align: right; }
+.rv-net.up { color: var(--green); } .rv-net.down { color: var(--red); }
+.bet-list.big { gap: 1vh; }
+.bet-list.big .rv-row { padding: .9vh 1.4vw; border-radius: 16px; }
+.bet-list.big .rv-row b { font-size: clamp(1.1rem, 2.7vh, 2rem); } .bet-list.big .rv-row .small { font-size: clamp(.8rem, 1.6vh, 1.1rem); } .bet-list.big .bet-ic { font-size: clamp(1.5rem, 3.4vh, 2.6rem); } .bet-list.big .pill { font-size: clamp(.9rem, 2vh, 1.4rem); }
+details > summary { cursor: pointer; font-weight: 600; }

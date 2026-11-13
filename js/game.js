@@ -122,7 +122,10 @@ export function teamStandings(players, teams) {
 export async function endSession(sid) {
   const s = await db.get(sp(sid));
   if (!s || s.status === 'ended') return;
-  const [players, teams] = await Promise.all([db.list(`${sp(sid)}/players`), db.list(`${sp(sid)}/teams`)]);
+  const [rawPlayers, teams] = await Promise.all([db.list(`${sp(sid)}/players`), db.list(`${sp(sid)}/teams`)]);
+  // en la Cata a cegues `score` guarda lo ganado o perdido; el marcador son las fichas que quedan (las del principio más eso)
+  const base = s.mode === 'blind' ? (s.startChips ?? 100) : 0;
+  const players = base ? rawPlayers.map((p) => ({ ...p, score: (p.score || 0) + base })) : rawPlayers;
   const rank = standings(players);
   const tRank = teamStandings(players, teams);
   const final = { top: rank.slice(0, 10).map((p) => ({ uid: p.id, nick: p.nick, score: p.score || 0, teamId: p.teamId || '' })), teams: tRank.map((t) => ({ id: t.id, name: t.name, color: t.color, score: t.score, members: t.members })), players: rank.length };
@@ -156,7 +159,7 @@ export async function endSession(sid) {
         won.push({ uid: p.id, code });
       }
     }
-    const gained = (p.score || 0) + (CONFIG.ranking.pointsPerGame || 0);
+    const gained = Math.max(0, (p.score || 0) - base) + (CONFIG.ranking.pointsPerGame || 0);   // en las fichas solo cuenta lo ganado
     ops.push(['set', 'leaderboard/' + p.id, { uid: p.id, nick: p.nick, points: (lb.points || 0) + gained, games: (lb.games || 0) + 1, wins: (lb.wins || 0) + (pos === 1 && rank.length >= 2 ? 1 : 0), badges: [...badges], updatedAt: db.ts() }]);
     ops.push(['set', `results/${p.id}_${sid}`, { uid: p.id, sid, title: s.title, date: Date.now(), score: p.score || 0, rank: pos, players: rank.length, correct: p.correct || 0, total: s.total, cataId: s.cataId || '', stamped: fresh, stamps, teamName: tIdx >= 0 ? tRank[tIdx].name : '', teamRank: tIdx >= 0 ? tIdx + 1 : 0, newBadges: [...badges].filter((b) => !before.has(b)), pointsGained: gained }]);
   }

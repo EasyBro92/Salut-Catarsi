@@ -17,7 +17,7 @@ export default function view({ el, query }) {
     const avail = qs.filter((q) => !picked.includes(q.id) && (!text || (q.prompt + ' ' + q.ref).toLowerCase().includes(text.toLowerCase()))).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
     const sel = picked.map((id) => qs.find((q) => q.id === id)).filter(Boolean);
     const total = sel.reduce((a, q) => a + (q.durationSec || 20) + 12, 0);
-    setHtml(el, html`${adminTabs('/admin/games')}<h1>${t('a.tab.games')}</h1>
+    setHtml(el, html`${adminTabs('/admin/games')}<div class="row between wrap mb"><h1 style="margin:0">${t('a.tab.games')}</h1><a class="btn gold" href="#/admin/blind">🍷 ${t('a.blind.new')}</a></div>
       <form class="card" id="gForm">
         <h2>${t('a.g.newGame')}</h2>
         <div class="grid c2">
@@ -40,7 +40,7 @@ export default function view({ el, query }) {
       </form>
       <h2 class="mt2">${t('a.g.prev')}</h2>
       ${sessions === null ? html`<div class="empty">…</div>` : sessions.length ? html`<div class="grid auto">${sessions.map((s) => html`<div class="card"><div class="row between"><h3 style="margin:0">${s.title}</h3><span class="pill ${s.status === 'ended' ? '' : 'gold'}">${s.status === 'ended' ? t('a.g.ended') : s.status === 'lobby' ? t('a.g.lobby') : t('a.g.playing')}</span></div>
-        <div class="meta mt"><span>🔑 ${s.code}</span><span>❓ ${s.total}</span><span>${s.createdAt ? fmtDateTime(s.createdAt) : ''}</span></div>
+        <div class="meta mt"><span>🔑 ${s.code}</span><span>${s.mode === 'blind' ? '🍷 ' + s.nWines : '❓ ' + s.total}</span><span>${s.createdAt ? fmtDateTime(s.createdAt) : ''}</span></div>
         ${s.final ? html`<p class="small muted mt" style="margin-bottom:0">🏆 ${s.final.top[0]?.nick || '—'} · 👥 ${s.final.players}</p>` : ''}
         <div class="row wrap mt"><a class="btn sm primary" href="#/admin/run/${s.id}">${s.status === 'ended' ? t('a.g.results') : t('a.g.present')}</a>${s.status === 'ended' ? html`<button class="btn sm" data-rate="${s.id}">${t('a.g.ratings')}</button>` : ''}</div></div>`)}</div>` : html`<div class="card empty">${t('a.g.none')}</div>`}`);
   };
