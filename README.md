@@ -148,4 +148,4 @@ El **presentador hace de árbitro**: su dispositivo abre cada pregunta, revela l
 
 ## Vista previa al compartir el enlace
 
-Las etiquetas de `index.html` (`og:title`, `og:description`, `og:image`…) hacen que al pasar el enlace por WhatsApp, Instagram o correo salga el logo (`img/og-catarsi.png`, 1200×630) con un título y una frase. Llevan escrita la dirección de GitHub Pages (`https://easybro92.github.io/ruleta-quiz-plataforma/catas-vino/`): si algún día usas otro dominio, cámbiala en `index.html`.
+Las etiquetas de `index.html` (`og:title`, `og:description`, `og:image`…) hacen que al pasar el enlace por WhatsApp, Instagram o correo salga el logo (`img/og-catarsi.png`, 1200×630) con un título y una frase. Llevan escrita la dirección de GitHub Pages (`https://easybro92.github.io/salut-catarsi/`): si algún día usas otro dominio, cámbiala en `index.html`.
