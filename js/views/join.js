@@ -3,7 +3,7 @@ import { db, auth } from '../store.js';
 import { S, go, loggedIn, myNick } from '../state.js';
 import { t } from '../i18n.js';
 import { CONFIG } from '../config.js';
-import { html, setHtml, on, formData, skeleton } from '../util.js';
+import { html, setHtml, on, formData, skeleton, modal } from '../util.js';
 import { findSessionByCode, joinSession, addTeam } from '../game.js';
 import { icon } from '../icons.js';
 
@@ -16,7 +16,8 @@ export default function view({ el, params, query }) {
     <form class="card center" id="codeForm">${err ? html`<div class="err">${err}</div>` : ''}
       <label class="field"><span>${t('join.code')}</span><input name="code" maxlength="6" autocomplete="off" autocapitalize="characters" required style="text-align:center;font-size:2rem;letter-spacing:.3em;text-transform:uppercase" value="${code}"></label>
       <button class="btn primary block" ${busy ? 'disabled' : ''}>${t('join.go')}</button></form>
-    <a class="card tr-entry" href="#/trivial"><span class="tr-entry-ic">${icon('crown', 26, 1.5)}</span><span class="grow"><b>${t('trivial.title')}</b><small>${t('trivial.tag')}</small></span>${icon('right', 20)}</a>`);
+    <a class="card tr-entry" href="#/trivial"><span class="tr-entry-ic">${icon('crown', 26, 1.5)}</span><span class="grow"><b>${t('trivial.title')}</b><small>${t('trivial.tag')}</small></span>${icon('right', 20)}</a>
+    <button type="button" class="card tr-entry" data-act="blind-info"><span class="tr-entry-ic">${icon('glass', 26, 1.5)}</span><span class="grow"><b>${t('blind.title')}</b><small>${t('blind.tag')} · ${t('blind.live')}</small></span>${icon('right', 20)}</button>`);
 
   const renderForm = () => {
     const mode = sess.teamMode;
@@ -47,7 +48,15 @@ export default function view({ el, params, query }) {
     } catch (e) { console.error(e); err = t('err.generic'); state = 'code'; renderCode(); }
   };
 
+  // la Cata a cegues se juega en directo en una cata: aquí solo se explica y se lleva al campo del código
+  const blindInfo = () => {
+    const m = modal(html`<h3>🍷 ${t('blind.title')}</h3><p class="muted">${t('blind.how.intro')}</p>
+      <ol class="how">${[1, 2, 3, 4].map((n) => html`<li>${t('blind.how.' + n)}</li>`)}</ol>
+      <button class="btn primary block mt" data-go>${t('blind.how.code')}</button><button class="btn ghost block mt" data-close>${t('common.back')}</button>`);
+    m.el.querySelector('[data-go]').addEventListener('click', () => { m.close(); const i = el.querySelector('[name=code]'); if (i) { i.scrollIntoView({ block: 'center', behavior: 'smooth' }); i.focus(); } });
+  };
   const offs = [
+    on(el, 'click', '[data-act="blind-info"]', blindInfo),
     on(el, 'submit', '#codeForm', (e) => { e.preventDefault(); const c = formData(e.target).code.toUpperCase().trim(); if (c) go('/join/' + c); }),
     on(el, 'change', '[name=team]', (e, s) => { el.querySelector('#newTeamBox')?.classList.toggle('hide', s.value !== '__new'); }),
     on(el, 'submit', '#joinForm', async (e) => {

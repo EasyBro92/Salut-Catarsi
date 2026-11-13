@@ -731,5 +731,12 @@ export default {
   "a.blind.reveal": "Revelar el vi",
   "a.blind.nextWine": "Vi següent",
   "blind.answered": "{a} de {n} han apostat",
-  "blind.nextSoon": "Aviat, el vi següent…"
+  "blind.nextSoon": "Aviat, el vi següent…",
+  "blind.live": "En directe a les catas",
+  "blind.how.intro": "Un joc per a les catas: tasteu cada vi a cegues i aposteu fitxes al que creieu que és.",
+  "blind.how.1": "Comences amb 100 fitxes. Per a cada vi, tria què creus que és en set característiques: raïm, D.O., anyada, graduació, criança, composició i preu.",
+  "blind.how.2": "Aposta fitxes a les que et sembla més clar. Si l'encertes, la fitxa es multiplica (de ×2 a ×5); si falles, la perds.",
+  "blind.how.3": "Quan es revela el vi, veus què has guanyat o perdut a cada fila i com es mou el rànquing.",
+  "blind.how.4": "Guanya qui acaba amb més fitxes. Per jugar, l'organitzador et dona un codi de 4 lletres o un QR.",
+  "blind.how.code": "Tinc un codi"
 };

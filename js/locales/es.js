@@ -731,5 +731,12 @@ export default {
   "a.blind.reveal": "Revelar el vino",
   "a.blind.nextWine": "Siguiente vino",
   "blind.answered": "{a} de {n} han apostado",
-  "blind.nextSoon": "En breve, el siguiente vino…"
+  "blind.nextSoon": "En breve, el siguiente vino…",
+  "blind.live": "En directo en las catas",
+  "blind.how.intro": "Un juego para las catas: cata cada vino a ciegas y apuesta fichas a lo que crees que es.",
+  "blind.how.1": "Empiezas con 100 fichas. Para cada vino, elige qué crees que es en siete características: uva, D.O., añada, graduación, crianza, composición y precio.",
+  "blind.how.2": "Apuesta fichas a las que te parezcan más claras. Si aciertas, la ficha se multiplica (de ×2 a ×5); si fallas, la pierdes.",
+  "blind.how.3": "Cuando se revela el vino, ves lo que has ganado o perdido en cada fila y cómo se mueve el ranking.",
+  "blind.how.4": "Gana quien acaba con más fichas. Para jugar, el organizador te da un código de 4 letras o un QR.",
+  "blind.how.code": "Tengo un código"
 };
